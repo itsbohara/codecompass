@@ -209,8 +209,19 @@ export class PlanViewProvider implements WebviewViewProvider {
       }
 
       this._currentPlan = plan;
+
+      // Add to recent plans if not already there
+      const existingIndex = this._recentPlans.findIndex(
+        (p) => p.id === plan.id,
+      );
+      if (existingIndex >= 0) {
+        this._recentPlans.splice(existingIndex, 1);
+      }
+      this._recentPlans.unshift(plan);
+
       await this.saveRecentPlans();
       this.postMessage({ type: "generation-complete", plan });
+      this.sendRecentPlans();
     } catch (error) {
       console.error("[PlanViewProvider] Error in handleGeneratePlan:", error);
       const errorMessage =
@@ -550,7 +561,6 @@ export class PlanViewProvider implements WebviewViewProvider {
   </div>
 
   <script>
-    console.log("[CodeCompass] INLINE script running!");
     window.addEventListener('error', function(e) {
       console.error("[CodeCompass] Script error:", e.message);
     });

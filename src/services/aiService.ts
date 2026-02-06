@@ -3,8 +3,8 @@
  * Handles communication with OpenAI-compatible APIs (Anthropic, litellm proxy, etc.)
  */
 
-import OpenAI from 'openai';
-import type { AIServiceConfig, AIError } from '../types';
+import OpenAI from "openai";
+import type { AIServiceConfig, AIError } from "../types";
 
 /**
  * System prompt for the planning assistant role
@@ -50,55 +50,40 @@ export class AIService {
    * @returns Generated plan as structured JSON
    */
   async generatePlan(prompt: string): Promise<unknown> {
-    console.log('[AIService] generatePlan called');
-    console.log('[AIService] Config:', {
-      model: this.config.model,
-      endpoint: this.config.endpoint || 'default',
-      maxTokens: this.config.maxTokens,
-      hasApiKey: !!this.config.apiKey,
-      apiKeyPrefix: this.config.apiKey ? this.config.apiKey.substring(0, 8) + '...' : 'none',
-    });
-
     try {
-      console.log('[AIService] Creating chat completion request...');
       const response = await this.client.chat.completions.create({
         model: this.config.model,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: prompt },
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: prompt },
         ],
         max_tokens: this.config.maxTokens,
-      });
-
-      console.log('[AIService] Response received:', {
-        id: response.id,
-        model: response.model,
-        choices: response.choices.length,
-        usage: response.usage,
       });
 
       const content = response.choices[0]?.message?.content;
 
       if (!content) {
-        console.error('[AIService] No content in response');
-        throw this.createError('No response content received from AI service');
+        throw this.createError("No response content received from AI service");
       }
-
-      console.log('[AIService] Raw content length:', content.length);
-      console.log('[AIService] Raw content preview:', content.substring(0, 200) + '...');
 
       // Attempt to parse JSON response
       try {
-        const parsed = JSON.parse(content);
-        console.log('[AIService] Successfully parsed JSON response');
+        // Strip markdown code block markers if present
+        let cleanContent = content.trim();
+        if (cleanContent.startsWith("```")) {
+          // Remove opening code block marker (e.g., ```json or ```)
+          cleanContent = cleanContent.replace(/^```(?:json)?\s*/, "");
+          // Remove closing code block marker
+          cleanContent = cleanContent.replace(/```\s*$/, "");
+        }
+
+        const parsed = JSON.parse(cleanContent);
         return parsed;
-      } catch (parseError) {
-        console.error('[AIService] JSON parse failed, returning raw content:', parseError);
+      } catch {
         // Return raw content if JSON parsing fails
         return { raw: content };
       }
     } catch (error) {
-      console.error('[AIService] Error in generatePlan:', error);
       throw this.handleError(error);
     }
   }
@@ -111,9 +96,10 @@ export class AIService {
       // Handle 401 Unauthorized
       if (error.status === 401) {
         return {
-          message: 'Invalid API key. Please check your CodeCompass API key in settings.',
-          code: 'AUTH_ERROR',
-          type: 'authentication',
+          message:
+            "Invalid API key. Please check your CodeCompass API key in settings.",
+          code: "AUTH_ERROR",
+          type: "authentication",
           original: error,
         };
       }
@@ -121,9 +107,9 @@ export class AIService {
       // Handle 429 Rate Limit
       if (error.status === 429) {
         return {
-          message: 'Rate limit exceeded. Please wait a moment and try again.',
-          code: 'RATE_LIMIT',
-          type: 'rate_limit',
+          message: "Rate limit exceeded. Please wait a moment and try again.",
+          code: "RATE_LIMIT",
+          type: "rate_limit",
           original: error,
         };
       }
@@ -131,9 +117,9 @@ export class AIService {
       // Handle 400 Bad Request
       if (error.status === 400) {
         return {
-          message: 'Invalid request. Please check your configuration.',
-          code: 'BAD_REQUEST',
-          type: 'bad_request',
+          message: "Invalid request. Please check your configuration.",
+          code: "BAD_REQUEST",
+          type: "bad_request",
           original: error,
         };
       }
@@ -142,24 +128,25 @@ export class AIService {
       return {
         message: `API error (${error.status}): ${error.message}`,
         code: error.code ?? undefined,
-        type: 'unknown',
+        type: "unknown",
         original: error,
       };
     }
 
     // Handle network/connection errors
-    if (error instanceof TypeError && error.message.includes('fetch')) {
+    if (error instanceof TypeError && error.message.includes("fetch")) {
       return {
-        message: 'Network error: Unable to reach the AI service. Check your connection and endpoint.',
-        code: 'NETWORK_ERROR',
-        type: 'network',
+        message:
+          "Network error: Unable to reach the AI service. Check your connection and endpoint.",
+        code: "NETWORK_ERROR",
+        type: "network",
         original: error,
       };
     }
 
     return {
       message: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
-      type: 'unknown',
+      type: "unknown",
       original: error,
     };
   }
@@ -170,7 +157,7 @@ export class AIService {
   private createError(message: string): AIError {
     return {
       message,
-      type: 'unknown',
+      type: "unknown",
     };
   }
 
