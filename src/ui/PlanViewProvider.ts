@@ -268,6 +268,15 @@ export class PlanViewProvider implements WebviewViewProvider {
    * Handle delete plan request
    */
   private async handleDeletePlan(): Promise<void> {
+    if (this._currentPlan) {
+      // Remove from recent plans
+      const index = this._recentPlans.findIndex(
+        (p) => p.id === this._currentPlan!.id,
+      );
+      if (index >= 0) {
+        this._recentPlans.splice(index, 1);
+      }
+    }
     this._currentPlan = null;
     await this.saveRecentPlans();
     this.postMessage({ type: "plan-deleted" });
