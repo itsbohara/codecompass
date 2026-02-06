@@ -1,0 +1,115 @@
+{
+  "name": "codecompass",
+  "displayName": "CodeCompass",
+  "description": "AI-powered planning assistant",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codecompass.openPlanPanel",
+        "title": "Open Plan Panel"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codecompass",
+          "title": "CodeCompass",
+          "icon": "ui/codecompass-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "codecompass": [
+        {
+          "id": "codecompass.planView",
+          "name": "Plan",
+          "type": "webview",
+          "visibility": "visible"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "codecompass.planView",
+        "contents": "Welcome to CodeCompass\n\nConfigure your API key to start generating implementation plans.",
+        "when": "!codecompass.apiKeyConfigured"
+      }
+    ],
+    "contextKeys": [
+      {
+        "id": "codecompass.apiKeyConfigured",
+        "default": false
+      }
+    ],
+    "configuration": {
+      "title": "CodeCompass",
+      "properties": {
+        "codecompass.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for AI services (supports Anthropic, OpenAI, litellm proxies, etc.)",
+          "order": 1
+        },
+        "codecompass.endpoint": {
+          "type": "string",
+          "default": "",
+          "description": "Custom endpoint URL for OpenAI-compatible APIs (leave empty for default)",
+          "order": 2
+        },
+        "codecompass.model": {
+          "type": "string",
+          "default": "",
+          "description": "Model identifier to use",
+          "order": 3
+        },
+        "codecompass.maxTokens": {
+          "type": "number",
+          "default": 4096,
+          "description": "Maximum tokens for AI responses",
+          "order": 4
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run package",
+    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.109.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.39.2",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0"
+  },
+  "dependencies": {
+    "openai": "^6.17.0"
+  },
+  "packageManager": "pnpm@10.17.1+sha512.17c560fca4867ae9473a3899ad84a88334914f379be46d455cbf92e5cf4b39d34985d452d2583baf19967fa76cb5c17bc9e245529d0b98745721aa7200ecaf7a"
+}
