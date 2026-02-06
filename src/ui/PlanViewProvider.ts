@@ -3,40 +3,40 @@
  * Provides a webview view in the VS Code sidebar for displaying AI-generated implementation plans
  */
 
-import * as vscode from 'vscode';
-import { WebviewViewProvider } from 'vscode';
-import { PlanService } from '../services/planService';
-import { ConfigService } from '../services/configService';
-import { Plan } from '../types';
+import * as vscode from "vscode";
+import { WebviewViewProvider } from "vscode";
+import { PlanService } from "../services/planService";
+import { ConfigService } from "../services/configService";
+import { Plan } from "../types";
 
 /**
  * Message types sent from extension to webview
  */
 type ExtensionMessage =
-  | { type: 'generation-start' }
-  | { type: 'generation-complete'; plan: Plan }
-  | { type: 'generation-error'; error: string }
-  | { type: 'plan-selected'; plan: Plan }
-  | { type: 'plan-deleted' }
-  | { type: 'copied' }
-  | { type: 'exported' }
-  | { type: 'config-status'; hasConfig: boolean }
-  | { type: 'recent-plans'; plans: Plan[] };
+  | { type: "generation-start" }
+  | { type: "generation-complete"; plan: Plan }
+  | { type: "generation-error"; error: string }
+  | { type: "plan-selected"; plan: Plan }
+  | { type: "plan-deleted" }
+  | { type: "copied" }
+  | { type: "exported" }
+  | { type: "config-status"; hasConfig: boolean }
+  | { type: "recent-plans"; plans: Plan[] };
 
 /**
  * Message types sent from webview to extension
  */
 type WebviewMessage =
-  | { type: 'generatePlan'; task: string }
-  | { type: 'selectPlan'; planId: string }
-  | { type: 'navigateToFile'; filePath: string }
-  | { type: 'deletePlan' }
-  | { type: 'copyStep'; stepId: string }
-  | { type: 'copyPlan' }
-  | { type: 'exportPlan' }
-  | { type: 'getRecentPlans' }
-  | { type: 'checkConfig' }
-  | { type: 'openSettings' };
+  | { type: "generatePlan"; task: string }
+  | { type: "selectPlan"; planId: string }
+  | { type: "navigateToFile"; filePath: string }
+  | { type: "deletePlan" }
+  | { type: "copyStep"; stepId: string }
+  | { type: "copyPlan" }
+  | { type: "exportPlan" }
+  | { type: "getRecentPlans" }
+  | { type: "checkConfig" }
+  | { type: "openSettings" };
 
 /**
  * Plans stored in global state
@@ -52,13 +52,13 @@ interface StoredPlan {
     completed?: boolean;
   }>;
   createdAt: number;
-  status: 'draft' | 'active' | 'completed' | 'failed';
+  status: "draft" | "active" | "completed" | "failed";
 }
 
-const PLAN_STORAGE_KEY = 'codecompass.recentPlans';
+const PLAN_STORAGE_KEY = "codecompass.recentPlans";
 
 export class PlanViewProvider implements WebviewViewProvider {
-  public static readonly viewType = 'codecompass.planView';
+  public static readonly viewType = "codecompass.planView";
   private _view?: vscode.WebviewView;
   private _currentPlan: Plan | null = null;
   private _recentPlans: Plan[] = [];
@@ -68,7 +68,7 @@ export class PlanViewProvider implements WebviewViewProvider {
     private readonly _extensionUri: vscode.Uri,
     private readonly _planService: PlanService,
     private readonly _configService: ConfigService,
-    private readonly _context: vscode.ExtensionContext
+    private readonly _context: vscode.ExtensionContext,
   ) {
     // Load recent plans from storage
     this.loadRecentPlans();
@@ -78,7 +78,7 @@ export class PlanViewProvider implements WebviewViewProvider {
    * Resolve the webview view when it's shown
    */
   public resolveWebviewView(
-    webviewView: vscode.WebviewView
+    webviewView: vscode.WebviewView,
   ): void | Thenable<void> {
     this._view = webviewView;
 
@@ -90,11 +90,9 @@ export class PlanViewProvider implements WebviewViewProvider {
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
     // Handle messages from the webview
-    webviewView.webview.onDidReceiveMessage(
-      async (message: WebviewMessage) => {
-        await this.handleWebviewMessage(message);
-      }
-    );
+    webviewView.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
+      await this.handleWebviewMessage(message);
+    });
 
     // Set up event listener for when the view becomes visible
     const onDidChangeVisibilityDisposable = webviewView.onDidChangeVisibility(
@@ -104,7 +102,7 @@ export class PlanViewProvider implements WebviewViewProvider {
           this.sendConfigStatus();
           this.sendRecentPlans();
         }
-      }
+      },
     );
     this._disposables.push(onDidChangeVisibilityDisposable);
   }
@@ -114,39 +112,39 @@ export class PlanViewProvider implements WebviewViewProvider {
    */
   private async handleWebviewMessage(message: WebviewMessage): Promise<void> {
     switch (message.type) {
-      case 'generatePlan': {
+      case "generatePlan": {
         await this.handleGeneratePlan(message.task);
         break;
       }
-      case 'selectPlan': {
+      case "selectPlan": {
         await this.handleSelectPlan(message.planId);
         break;
       }
-      case 'navigateToFile': {
+      case "navigateToFile": {
         await this.handleNavigateToFile(message.filePath);
         break;
       }
-      case 'deletePlan': {
+      case "deletePlan": {
         await this.handleDeletePlan();
         break;
       }
-      case 'copyPlan': {
+      case "copyPlan": {
         await this.handleCopyPlan();
         break;
       }
-      case 'exportPlan': {
+      case "exportPlan": {
         await this.handleExportPlan();
         break;
       }
-      case 'getRecentPlans': {
+      case "getRecentPlans": {
         this.sendRecentPlans();
         break;
       }
-      case 'checkConfig': {
+      case "checkConfig": {
         this.sendConfigStatus();
         break;
       }
-      case 'openSettings': {
+      case "openSettings": {
         await this.handleOpenSettings();
         break;
       }
@@ -157,10 +155,10 @@ export class PlanViewProvider implements WebviewViewProvider {
    * Handle open settings request
    */
   private async handleOpenSettings(): Promise<void> {
-    console.log('[CodeCompass] Opening settings for codecompass.apiKey');
+    console.log("[CodeCompass] Opening settings for codecompass.apiKey");
     await vscode.commands.executeCommand(
-      'workbench.action.openSettings',
-      'codecompass.apiKey'
+      "workbench.action.openSettings",
+      "codecompass.apiKey",
     );
   }
 
@@ -168,57 +166,63 @@ export class PlanViewProvider implements WebviewViewProvider {
    * Handle plan generation request
    */
   private async handleGeneratePlan(task: string): Promise<void> {
-    console.log('[PlanViewProvider] handleGeneratePlan called with task:', task);
-    console.log('[PlanViewProvider] Current config status:', {
+    console.log(
+      "[PlanViewProvider] handleGeneratePlan called with task:",
+      task,
+    );
+    console.log("[PlanViewProvider] Current config status:", {
       hasApiKey: !!this._configService.apiKey,
-      apiKeyPrefix: this._configService.apiKey ? this._configService.apiKey.substring(0, 8) + '...' : 'none',
+      apiKeyPrefix: this._configService.apiKey
+        ? this._configService.apiKey.substring(0, 8) + "..."
+        : "none",
     });
 
     // Check for API key first
     if (!this._configService.apiKey) {
-      console.log('[PlanViewProvider] No API key found, showing error');
+      console.log("[PlanViewProvider] No API key found, showing error");
       this.postMessage({
-        type: 'generation-error',
-        error: 'API key not configured. Please set your API key in settings.',
+        type: "generation-error",
+        error: "API key not configured. Please set your API key in settings.",
       });
       return;
     }
 
-    console.log('[PlanViewProvider] API key found, starting generation');
-    this.postMessage({ type: 'generation-start' });
+    console.log("[PlanViewProvider] API key found, starting generation");
+    this.postMessage({ type: "generation-start" });
 
     try {
-      console.log('[PlanViewProvider] Calling planService.generatePlan');
+      console.log("[PlanViewProvider] Calling planService.generatePlan");
       const plan = await this._planService.generatePlan(task, {
         includeActiveFile: true,
         includeWorkspaceStructure: true,
         includeDependencies: true,
       });
 
-      console.log('[PlanViewProvider] Plan generated:', {
+      console.log("[PlanViewProvider] Plan generated:", {
         id: plan.id,
         status: plan.status,
         stepCount: plan.steps.length,
       });
 
-      if (plan.status === 'failed') {
-        console.log('[PlanViewProvider] Plan generation failed, showing error');
+      if (plan.status === "failed") {
+        console.log("[PlanViewProvider] Plan generation failed, showing error");
         this.postMessage({
-          type: 'generation-error',
-          error: 'Failed to generate plan. Please check your API configuration and try again.',
+          type: "generation-error",
+          error:
+            "Failed to generate plan. Please check your API configuration and try again.",
         });
         return;
       }
 
       this._currentPlan = plan;
       await this.saveRecentPlans();
-      console.log('[PlanViewProvider] Sending generation-complete message');
-      this.postMessage({ type: 'generation-complete', plan });
+      console.log("[PlanViewProvider] Sending generation-complete message");
+      this.postMessage({ type: "generation-complete", plan });
     } catch (error) {
-      console.error('[PlanViewProvider] Error in handleGeneratePlan:', error);
+      console.error("[PlanViewProvider] Error in handleGeneratePlan:", error);
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      this.postMessage({ type: 'generation-error', error: errorMessage });
+      this.postMessage({ type: "generation-error", error: errorMessage });
     }
   }
 
@@ -229,7 +233,7 @@ export class PlanViewProvider implements WebviewViewProvider {
     const plan = this._recentPlans.find((p) => p.id === planId);
     if (plan) {
       this._currentPlan = plan;
-      this.postMessage({ type: 'plan-selected', plan });
+      this.postMessage({ type: "plan-selected", plan });
     }
   }
 
@@ -239,22 +243,20 @@ export class PlanViewProvider implements WebviewViewProvider {
   private async handleNavigateToFile(filePath: string): Promise<void> {
     if (!vscode.workspace.rootPath) {
       vscode.window.showWarningMessage(
-        'No workspace folder is open. Cannot navigate to file.'
+        "No workspace folder is open. Cannot navigate to file.",
       );
       return;
     }
 
     const fullPath = vscode.Uri.joinPath(
       vscode.Uri.file(vscode.workspace.rootPath),
-      filePath
+      filePath,
     );
 
     try {
-      await vscode.commands.executeCommand('vscode.open', fullPath);
+      await vscode.commands.executeCommand("vscode.open", fullPath);
     } catch (error) {
-      vscode.window.showErrorMessage(
-        `Failed to open file: ${filePath}`
-      );
+      vscode.window.showErrorMessage(`Failed to open file: ${filePath}`);
     }
   }
 
@@ -264,7 +266,7 @@ export class PlanViewProvider implements WebviewViewProvider {
   private async handleDeletePlan(): Promise<void> {
     this._currentPlan = null;
     await this.saveRecentPlans();
-    this.postMessage({ type: 'plan-deleted' });
+    this.postMessage({ type: "plan-deleted" });
   }
 
   /**
@@ -277,7 +279,7 @@ export class PlanViewProvider implements WebviewViewProvider {
 
     const markdown = this.formatPlanAsMarkdown(this._currentPlan);
     await vscode.env.clipboard.writeText(markdown);
-    this.postMessage({ type: 'copied' });
+    this.postMessage({ type: "copied" });
   }
 
   /**
@@ -292,16 +294,16 @@ export class PlanViewProvider implements WebviewViewProvider {
 
     const uri = await vscode.window.showSaveDialog({
       defaultUri: vscode.Uri.file(
-        `${this._currentPlan.task.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`
+        `${this._currentPlan.task.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.md`,
       ),
       filters: {
-        Markdown: ['md'],
+        Markdown: ["md"],
       },
     });
 
     if (uri) {
       await vscode.workspace.fs.writeFile(uri, Buffer.from(markdown));
-      this.postMessage({ type: 'exported' });
+      this.postMessage({ type: "exported" });
     }
   }
 
@@ -311,21 +313,21 @@ export class PlanViewProvider implements WebviewViewProvider {
   private formatPlanAsMarkdown(plan: Plan): string {
     const lines: string[] = [];
     lines.push(`# ${plan.task}`);
-    lines.push('');
+    lines.push("");
     lines.push(`*Plan generated on ${plan.createdAt.toLocaleString()}*`);
-    lines.push('');
-    lines.push('## Steps');
-    lines.push('');
+    lines.push("");
+    lines.push("## Steps");
+    lines.push("");
 
     for (const step of plan.steps) {
       lines.push(`${step.order + 1}. ${step.description}`);
       if (step.files && step.files.length > 0) {
-        lines.push(`   Files: ${step.files.join(', ')}`);
+        lines.push(`   Files: ${step.files.join(", ")}`);
       }
-      lines.push('');
+      lines.push("");
     }
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   /**
@@ -342,15 +344,15 @@ export class PlanViewProvider implements WebviewViewProvider {
    */
   private sendConfigStatus(): void {
     const hasConfig = !!this._configService.apiKey;
-    console.log('Config status hasConfig:', hasConfig);
-    this.postMessage({ type: 'config-status', hasConfig });
+    console.log("Config status hasConfig:", hasConfig);
+    this.postMessage({ type: "config-status", hasConfig });
   }
 
   /**
    * Send recent plans to webview
    */
   private sendRecentPlans(): void {
-    this.postMessage({ type: 'recent-plans', plans: this._recentPlans });
+    this.postMessage({ type: "recent-plans", plans: this._recentPlans });
   }
 
   /**
@@ -360,14 +362,14 @@ export class PlanViewProvider implements WebviewViewProvider {
     try {
       const stored = this._context.globalState.get<StoredPlan[]>(
         PLAN_STORAGE_KEY,
-        []
+        [],
       );
       this._recentPlans = stored.map((sp) => ({
         ...sp,
         createdAt: new Date(sp.createdAt),
       }));
     } catch (error) {
-      console.error('Failed to load recent plans:', error);
+      console.error("Failed to load recent plans:", error);
       this._recentPlans = [];
     }
   }
@@ -387,7 +389,7 @@ export class PlanViewProvider implements WebviewViewProvider {
 
       await this._context.globalState.update(PLAN_STORAGE_KEY, plans);
     } catch (error) {
-      console.error('Failed to save recent plans:', error);
+      console.error("Failed to save recent plans:", error);
     }
   }
 
@@ -397,10 +399,10 @@ export class PlanViewProvider implements WebviewViewProvider {
   private _getHtmlForWebview(webview: vscode.Webview): string {
     // Get URIs for local resources
     const stylesUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'ui', 'styles.css')
+      vscode.Uri.joinPath(this._extensionUri, "dist", "ui", "styles.css"),
     );
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'ui', 'webview.js')
+      vscode.Uri.joinPath(this._extensionUri, "dist", "ui", "webview.js"),
     );
 
     return `<!DOCTYPE html>
@@ -527,6 +529,12 @@ export class PlanViewProvider implements WebviewViewProvider {
   <!-- Toast Container -->
   <div id="toastContainer" class="toast-container"></div>
 
+  <script>
+    console.log("[CodeCompass] INLINE script running!");
+    window.addEventListener('error', function(e) {
+      console.error("[CodeCompass] Script error:", e.message);
+    });
+  </script>
   <script src="${scriptUri}"></script>
 </body>
 </html>`;

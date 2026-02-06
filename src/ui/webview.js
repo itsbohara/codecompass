@@ -6,6 +6,11 @@
 (function () {
   "use strict";
 
+  console.log("[CodeCompass] webview.js loaded!");
+
+  // Acquire VS Code API
+  const vscode = acquireVsCodeApi();
+
   // === State ===
   const state = {
     currentPlan: null,
@@ -58,6 +63,7 @@
 
     console.log("[CodeCompass] DOM elements initialized:", {
       openSettingsButton: !!elements.openSettingsButton,
+      openSettingsButtonId: elements.openSettingsButton?.id,
       settingsButton: !!elements.settingsButton,
     });
   }
@@ -67,13 +73,23 @@
   // Settings button
   function initEventListeners() {
     elements.settingsButton.addEventListener("click", () => {
-      sendMessage({ type: "checkConfig" });
-    });
-
-    elements.openSettingsButton?.addEventListener("click", () => {
-      console.log("[CodeCompass] Open Settings button clicked");
+      console.log("[CodeCompass] Settings button clicked");
       sendMessage({ type: "openSettings" });
     });
+
+    if (elements.openSettingsButton) {
+      console.log(
+        "[CodeCompass] Attaching click listener to openSettingsButton",
+      );
+      elements.openSettingsButton.addEventListener("click", (e) => {
+        console.log("[CodeCompass] Open Settings button clicked!");
+        e.preventDefault();
+        e.stopPropagation();
+        sendMessage({ type: "openSettings" });
+      });
+    } else {
+      console.log("[CodeCompass] WARNING: openSettingsButton not found!");
+    }
 
     // Tab switching
     elements.currentTab.addEventListener("click", () => switchPanel("current"));
@@ -488,12 +504,19 @@
   // === Initialization ===
 
   function init() {
+    console.log("[CodeCompass] init() running...");
     initElements();
+    console.log(
+      "[CodeCompass] initElements done, openSettingsButton:",
+      !!elements.openSettingsButton,
+    );
     initEventListeners();
+    console.log("[CodeCompass] initEventListeners done");
 
     // Check initial state
     sendMessage({ type: "checkConfig" });
     sendMessage({ type: "getRecentPlans" });
+    console.log("[CodeCompass] init() complete");
   }
 
   // Run initialization when DOM is ready

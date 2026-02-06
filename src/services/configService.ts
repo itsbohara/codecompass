@@ -53,16 +53,33 @@ export class ConfigService {
    */
   get apiKey(): string {
     const configKey = this.config.get<string>(CONFIG_KEYS.API_KEY, "");
+    console.log("[ConfigService] Raw configKey from VS Code:", {
+      value: configKey,
+      length: configKey?.length,
+      isEmpty: !configKey,
+      envFallback: process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY,
+    });
+
     // Trim the config key to handle whitespace issues
     const trimmedConfigKey = configKey ? configKey.trim() : "";
 
     // Prioritize the VS Code setting over environment variables
     if (trimmedConfigKey) {
+      console.log(
+        "[ConfigService] Using VS Code setting:",
+        trimmedConfigKey.substring(0, 8) + "...",
+      );
       return trimmedConfigKey;
     }
 
     // Fall back to environment variables only if no config setting
-    return process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || "";
+    const envKey =
+      process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || "";
+    console.log(
+      "[ConfigService] Using env fallback:",
+      envKey ? envKey.substring(0, 8) + "..." : "none",
+    );
+    return envKey;
   }
 
   /**
