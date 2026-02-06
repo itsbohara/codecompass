@@ -6,13 +6,14 @@
 import * as vscode from "vscode";
 
 /**
- * VSCode configuration keys
+ * VSCode configuration keys (relative to "codecompass" section)
+ * When using getConfiguration("codecompass"), use relative keys
  */
 const CONFIG_KEYS = {
-  API_KEY: "codecompass.apiKey",
-  ENDPOINT: "codecompass.endpoint",
-  MODEL: "codecompass.model",
-  MAX_TOKENS: "codecompass.maxTokens",
+  API_KEY: "apiKey",
+  ENDPOINT: "endpoint",
+  MODEL: "model",
+  MAX_TOKENS: "maxTokens",
 } as const;
 
 /**
@@ -32,20 +33,11 @@ const DEFAULT_ENDPOINT = "";
 
 export class ConfigService {
   private config: vscode.WorkspaceConfiguration;
+  private lastModel: string;
 
   constructor() {
     this.config = vscode.workspace.getConfiguration("codecompass");
-    console.log("[ConfigService] Initial config loaded:", {
-      hasApiKey: !!this.apiKey,
-      apiKeyPrefix: this.apiKey ? this.apiKey.substring(0, 8) + "..." : "none",
-      model: this.model,
-      endpoint: this.endpoint || "none",
-      maxTokens: this.maxTokens,
-      configSource: this.config.inspect(CONFIG_KEYS.API_KEY)
-        ?.defaultLanguageValue
-        ? "override"
-        : "default",
-    });
+    this.lastModel = this.model;
   }
 
   /**
@@ -53,33 +45,13 @@ export class ConfigService {
    */
   get apiKey(): string {
     const configKey = this.config.get<string>(CONFIG_KEYS.API_KEY, "");
-    console.log("[ConfigService] Raw configKey from VS Code:", {
-      value: configKey,
-      length: configKey?.length,
-      isEmpty: !configKey,
-      envFallback: process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY,
-    });
-
-    // Trim the config key to handle whitespace issues
     const trimmedConfigKey = configKey ? configKey.trim() : "";
 
-    // Prioritize the VS Code setting over environment variables
     if (trimmedConfigKey) {
-      console.log(
-        "[ConfigService] Using VS Code setting:",
-        trimmedConfigKey.substring(0, 8) + "...",
-      );
       return trimmedConfigKey;
     }
 
-    // Fall back to environment variables only if no config setting
-    const envKey =
-      process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || "";
-    console.log(
-      "[ConfigService] Using env fallback:",
-      envKey ? envKey.substring(0, 8) + "..." : "none",
-    );
-    return envKey;
+    return process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || "";
   }
 
   /**
@@ -96,9 +68,7 @@ export class ConfigService {
    * Get model identifier
    */
   get model(): string {
-    return (
-      this.config.get<string>(CONFIG_KEYS.MODEL, DEFAULT_MODEL) || DEFAULT_MODEL
-    );
+    return this.config.get<string>(CONFIG_KEYS.MODEL) || DEFAULT_MODEL;
   }
 
   /**
@@ -157,13 +127,6 @@ export class ConfigService {
    */
   reloadConfig(): void {
     this.config = vscode.workspace.getConfiguration("codecompass");
-    console.log("[ConfigService] Config reloaded:", {
-      hasApiKey: !!this.apiKey,
-      apiKeyPrefix: this.apiKey ? this.apiKey.substring(0, 8) + "..." : "none",
-      model: this.model,
-      endpoint: this.endpoint || "none",
-      maxTokens: this.maxTokens,
-      inspect: this.config.inspect(CONFIG_KEYS.API_KEY),
-    });
+    this.lastModel = this.model;
   }
 }

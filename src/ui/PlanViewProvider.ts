@@ -21,7 +21,13 @@ type ExtensionMessage =
   | { type: "copied" }
   | { type: "exported" }
   | { type: "config-status"; hasConfig: boolean }
-  | { type: "recent-plans"; plans: Plan[] };
+  | { type: "recent-plans"; plans: Plan[] }
+  | {
+      type: "config-info";
+      model: string;
+      endpoint: string;
+      hasConfig: boolean;
+    };
 
 /**
  * Message types sent from webview to extension
@@ -105,6 +111,17 @@ export class PlanViewProvider implements WebviewViewProvider {
       },
     );
     this._disposables.push(onDidChangeVisibilityDisposable);
+
+    // Set up event listener for when configuration changes
+    const onDidChangeConfigurationDisposable =
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration("codecompass")) {
+          this._configService.reloadConfig();
+          this.sendConfigInfo();
+          this.sendConfigStatus();
+        }
+      });
+    this._disposables.push(onDidChangeConfigurationDisposable);
   }
 
   /**
@@ -155,10 +172,9 @@ export class PlanViewProvider implements WebviewViewProvider {
    * Handle open settings request
    */
   private async handleOpenSettings(): Promise<void> {
-    console.log("[CodeCompass] Opening settings for codecompass.apiKey");
     await vscode.commands.executeCommand(
       "workbench.action.openSettings",
-      "codecompass.apiKey",
+      "codecompass",
     );
   }
 
@@ -166,20 +182,7 @@ export class PlanViewProvider implements WebviewViewProvider {
    * Handle plan generation request
    */
   private async handleGeneratePlan(task: string): Promise<void> {
-    console.log(
-      "[PlanViewProvider] handleGeneratePlan called with task:",
-      task,
-    );
-    console.log("[PlanViewProvider] Current config status:", {
-      hasApiKey: !!this._configService.apiKey,
-      apiKeyPrefix: this._configService.apiKey
-        ? this._configService.apiKey.substring(0, 8) + "..."
-        : "none",
-    });
-
-    // Check for API key first
     if (!this._configService.apiKey) {
-      console.log("[PlanViewProvider] No API key found, showing error");
       this.postMessage({
         type: "generation-error",
         error: "API key not configured. Please set your API key in settings.",
@@ -187,25 +190,16 @@ export class PlanViewProvider implements WebviewViewProvider {
       return;
     }
 
-    console.log("[PlanViewProvider] API key found, starting generation");
     this.postMessage({ type: "generation-start" });
 
     try {
-      console.log("[PlanViewProvider] Calling planService.generatePlan");
       const plan = await this._planService.generatePlan(task, {
         includeActiveFile: true,
         includeWorkspaceStructure: true,
         includeDependencies: true,
       });
 
-      console.log("[PlanViewProvider] Plan generated:", {
-        id: plan.id,
-        status: plan.status,
-        stepCount: plan.steps.length,
-      });
-
       if (plan.status === "failed") {
-        console.log("[PlanViewProvider] Plan generation failed, showing error");
         this.postMessage({
           type: "generation-error",
           error:
@@ -216,7 +210,6 @@ export class PlanViewProvider implements WebviewViewProvider {
 
       this._currentPlan = plan;
       await this.saveRecentPlans();
-      console.log("[PlanViewProvider] Sending generation-complete message");
       this.postMessage({ type: "generation-complete", plan });
     } catch (error) {
       console.error("[PlanViewProvider] Error in handleGeneratePlan:", error);
@@ -344,8 +337,21 @@ export class PlanViewProvider implements WebviewViewProvider {
    */
   private sendConfigStatus(): void {
     const hasConfig = !!this._configService.apiKey;
-    console.log("Config status hasConfig:", hasConfig);
     this.postMessage({ type: "config-status", hasConfig });
+    // Also send detailed config info for footer
+    this.sendConfigInfo();
+  }
+
+  /**
+   * Send detailed config info to webview for footer display
+   */
+  private sendConfigInfo(): void {
+    this.postMessage({
+      type: "config-info",
+      model: this._configService.model,
+      endpoint: this._configService.endpoint || "default",
+      hasConfig: !!this._configService.apiKey,
+    });
   }
 
   /**
@@ -524,10 +530,22 @@ export class PlanViewProvider implements WebviewViewProvider {
         </div>
       </div>
     </section>
-  </div>
 
-  <!-- Toast Container -->
-  <div id="toastContainer" class="toast-container"></div>
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Footer with Config Info -->
+    <footer class="config-footer" id="configFooter" title="Click to open settings">
+      <div class="config-item">
+        <span class="config-label">Model:</span>
+        <span class="config-value" id="configModel">-</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">API:</span>
+        <span class="config-value" id="configEndpoint">-</span>
+      </div>
+    </footer>
+  </div>
 
   <script>
     console.log("[CodeCompass] INLINE script running!");
