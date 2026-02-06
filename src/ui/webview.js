@@ -18,6 +18,7 @@
     recentPlans: [],
     hasConfig: false,
     activePanel: "current", // 'current' or 'plans'
+    showNewPlanForm: false,
   };
 
   // === DOM Elements ===
@@ -27,6 +28,7 @@
   function initElements() {
     elements.statusIndicator = document.getElementById("statusIndicator");
     elements.settingsButton = document.getElementById("settingsButton");
+    elements.newPlanButton = document.getElementById("newPlanButton");
     elements.currentTab = document.getElementById("currentTab");
     elements.plansTab = document.getElementById("plansTab");
     elements.currentPanel = document.getElementById("currentPanel");
@@ -61,10 +63,16 @@
     // Settings modal button
     elements.openSettingsButton = document.getElementById("openSettingsButton");
 
+    // Config footer
+    elements.configFooter = document.getElementById("configFooter");
+    elements.configModel = document.getElementById("configModel");
+
     console.log("[CodeCompass] DOM elements initialized:", {
       openSettingsButton: !!elements.openSettingsButton,
       openSettingsButtonId: elements.openSettingsButton?.id,
       settingsButton: !!elements.settingsButton,
+      configFooter: !!elements.configFooter,
+      configModel: !!elements.configModel,
     });
   }
 
@@ -76,6 +84,16 @@
       console.log("[CodeCompass] Settings button clicked");
       sendMessage({ type: "openSettings" });
     });
+
+    // New plan button
+    if (elements.newPlanButton) {
+      elements.newPlanButton.addEventListener("click", () => {
+        console.log("[CodeCompass] New plan button clicked");
+        state.showNewPlanForm = true;
+        state.activePanel = "current";
+        updateUIState();
+      });
+    }
 
     if (elements.openSettingsButton) {
       console.log(
@@ -89,6 +107,14 @@
       });
     } else {
       console.log("[CodeCompass] WARNING: openSettingsButton not found!");
+    }
+
+    // Config footer click
+    if (elements.configFooter) {
+      elements.configFooter.addEventListener("click", () => {
+        console.log("[CodeCompass] Config footer clicked");
+        sendMessage({ type: "openSettings" });
+      });
     }
 
     // Tab switching
@@ -168,6 +194,9 @@
       case "recent-plans":
         handleRecentPlans(message.plans);
         break;
+      case "config-info":
+        handleConfigInfo(message.model, message.endpoint, message.hasConfig);
+        break;
     }
   }
 
@@ -182,6 +211,7 @@
   function handleGenerationComplete(plan) {
     state.isGenerating = false;
     state.currentPlan = plan;
+    state.showNewPlanForm = false;
 
     // Save to recent plans if not already there
     const existingIndex = state.recentPlans.findIndex((p) => p.id === plan.id);
@@ -204,11 +234,13 @@
   function handlePlanSelected(plan) {
     state.currentPlan = plan;
     state.activePanel = "current";
+    state.showNewPlanForm = false;
     updateUIState();
   }
 
   function handlePlanDeleted() {
     state.currentPlan = null;
+    state.showNewPlanForm = false;
 
     // Remove from recent plans
     if (state.recentPlans.length > 0) {
@@ -224,6 +256,17 @@
     updateUIState();
   }
 
+  function handleConfigInfo(model, _endpoint, hasConfig) {
+    console.log("[CodeCompass] handleConfigInfo:", {
+      model,
+      hasConfig,
+    });
+    if (elements.configModel) {
+      elements.configModel.textContent = model || "-";
+      elements.configModel.classList.toggle("no-config", !hasConfig);
+    }
+  }
+
   function handleRecentPlans(plans) {
     state.recentPlans = plans;
     renderPlansList();
@@ -232,42 +275,53 @@
   // === UI Updates ===
 
   function updateUIState() {
+    // Reset panel visibility first
+    elements.emptyNoConfig.classList.add("hidden");
+    elements.emptyNoPlan.classList.add("hidden");
+    elements.inputSection.classList.add("hidden");
+    elements.generatingState.classList.add("hidden");
+    elements.planDisplay.classList.add("hidden");
+
     if (!state.hasConfig) {
       elements.emptyNoConfig.classList.remove("hidden");
-      elements.emptyNoPlan.classList.add("hidden");
-      elements.inputSection.classList.add("hidden");
-      elements.generatingState.classList.add("hidden");
-      elements.planDisplay.classList.add("hidden");
       elements.statusIndicator?.classList.remove("configured");
       elements.generateButton.disabled = true;
     } else if (state.isGenerating) {
-      elements.emptyNoConfig.classList.add("hidden");
-      elements.emptyNoPlan.classList.add("hidden");
-      elements.inputSection.classList.add("hidden");
       elements.generatingState.classList.remove("hidden");
-      elements.planDisplay.classList.add("hidden");
       elements.statusIndicator?.classList.remove("configured");
       elements.statusIndicator?.classList.add("generating");
       elements.generateButton.disabled = true;
-    } else if (!state.currentPlan) {
-      elements.emptyNoConfig.classList.add("hidden");
+    } else if (state.showNewPlanForm) {
+      // Show input form for creating a new plan
       elements.emptyNoPlan.classList.remove("hidden");
       elements.inputSection.classList.remove("hidden");
-      elements.generatingState.classList.add("hidden");
-      elements.planDisplay.classList.add("hidden");
+      elements.statusIndicator?.classList.add("configured");
+      elements.statusIndicator?.classList.remove("generating");
+      elements.generateButton.disabled = false;
+      // Clear the input and focus it
+      elements.taskInput.value = "";
+      elements.taskInput.focus();
+    } else if (!state.currentPlan) {
+      elements.emptyNoPlan.classList.remove("hidden");
+      elements.inputSection.classList.remove("hidden");
       elements.statusIndicator?.classList.add("configured");
       elements.statusIndicator?.classList.remove("generating");
       elements.generateButton.disabled = false;
     } else {
-      elements.emptyNoConfig.classList.add("hidden");
-      elements.emptyNoPlan.classList.add("hidden");
-      elements.inputSection.classList.add("hidden");
-      elements.generatingState.classList.add("hidden");
       elements.planDisplay.classList.remove("hidden");
       elements.statusIndicator?.classList.add("configured");
       elements.statusIndicator?.classList.remove("generating");
       elements.generateButton.disabled = false;
       renderPlanDisplay();
+    }
+
+    // Update tab panel visibility
+    if (state.activePanel === "current") {
+      elements.currentPanel.classList.remove("hidden");
+      elements.plansPanel.classList.add("hidden");
+    } else {
+      elements.currentPanel.classList.add("hidden");
+      elements.plansPanel.classList.remove("hidden");
     }
 
     renderPlansList();
